@@ -117,9 +117,7 @@ function Home(props) {
     useEffect(() => {
         startVideo()
         async function loadModels() {
-            let modelsLoaded = await helper.loadModels()
-            console.log(modelsLoaded)
-            if (modelsLoaded) {
+            if (await helper.loadModels()) {
                 setModelsLoaded(true)
             }
         }
