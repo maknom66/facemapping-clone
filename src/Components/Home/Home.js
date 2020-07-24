@@ -131,6 +131,7 @@ function Home(props) {
             video.addEventListener('play', () => {
                 let detectionInterval = setInterval(async () => {
                     // detectFace()
+                    console.log('lets call onplay', modelsLoaded)
                     modelsLoaded && await helper.onplay()
                 }, 500)
                 setDetectionInterval(detectionInterval)
