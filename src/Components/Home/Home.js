@@ -129,9 +129,9 @@ function Home(props) {
         if (videoDims) {
             const video = document.getElementById('fmcInputVideo')
             video.addEventListener('play', () => {
-                let detectionInterval = setInterval(() => {
+                let detectionInterval = setInterval(async () => {
                     // detectFace()
-                    modelsLoaded && helper.onplay()
+                    modelsLoaded && await helper.onplay()
                 }, 500)
                 setDetectionInterval(detectionInterval)
             })
