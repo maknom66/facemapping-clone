@@ -61,7 +61,8 @@ export async function loadModels() {
         return true
     }
     catch (err) {
-        alert(err)
+        console.log(err)
+        return false
     }
 }
 
