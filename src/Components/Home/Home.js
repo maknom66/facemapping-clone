@@ -118,25 +118,32 @@ function Home(props) {
         startVideo()
         async function loadModels() {
             if (await helper.loadModels()) {
-                setModelsLoaded(true)
+                const video = document.getElementById('fmcInputVideo')
+                video.addEventListener('play', () => {
+                    let detectionInterval = setInterval(async () => {
+                        console.log('lets call onplay', modelsLoaded)
+                        await helper.onplay()
+                    }, 500)
+                    setDetectionInterval(detectionInterval)
+                })
             }
         }
         loadModels()
     }, [])
 
     // START DETECTING FACE ONCE DIMENSIONS ARE LOADED
-    useEffect(() => {
-        if (modelsLoaded) {
-            const video = document.getElementById('fmcInputVideo')
-            video.addEventListener('play', () => {
-                let detectionInterval = setInterval(async () => {
-                    console.log('lets call onplay', modelsLoaded)
-                    modelsLoaded && await helper.onplay()
-                }, 500)
-                setDetectionInterval(detectionInterval)
-            })
-        }
-    }, [modelsLoaded])
+    // useEffect(() => {
+    //     if (modelsLoaded) {
+    //         const video = document.getElementById('fmcInputVideo')
+    //         video.addEventListener('play', () => {
+    //             let detectionInterval = setInterval(async () => {
+    //                 console.log('lets call onplay', modelsLoaded)
+    //                 modelsLoaded && await helper.onplay()
+    //             }, 500)
+    //             setDetectionInterval(detectionInterval)
+    //         })
+    //     }
+    // }, [modelsLoaded])
 
     return (
         <div className="App">
