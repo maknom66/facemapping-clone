@@ -117,7 +117,9 @@ function Home(props) {
     useEffect(() => {
         startVideo()
         async function loadModels() {
-            if (await helper.loadModels()) {
+            let modelsLoaded = await helper.loadModels()
+            console.log(modelsLoaded)
+            if (modelsLoaded) {
                 setModelsLoaded(true)
             }
         }
@@ -129,6 +131,7 @@ function Home(props) {
         const video = document.getElementById('fmcInputVideo')
         video.addEventListener('play', () => {
             let detectionInterval = setInterval(async () => {
+                console.log('lets call onplay', modelsLoaded)
                 modelsLoaded && await helper.onplay()
             }, 500)
             setDetectionInterval(detectionInterval)
