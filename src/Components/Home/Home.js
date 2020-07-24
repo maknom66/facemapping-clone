@@ -24,33 +24,6 @@ function Home(props) {
     const [mediaDevices, setMediaDevices] = useState([])
 
     // METHODS
-    const detectFace = async () => {
-        try {
-            // LOAD MODELS
-            await faceapi.nets.ssdMobilenetv1.loadFromUri('/assets/models')
-            await faceapi.nets.faceExpressionNet.loadFromUri('/assets/models')
-            await faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models')
-            await faceapi.nets.ageGenderNet.loadFromUri('/assets/models')
-
-            // GET REFERENCE OF MEDIA
-            const input = document.getElementById('fmcInputVideo')
-
-            // GET MEDIA DIMENSIONS
-            let videoDimRatio = videoDims.width / videoDims.height
-            let displaySize = { width: input.width, height: input.width / videoDimRatio }
-
-            // GET ALREADY ADDED CANVAS TO SHOW DETECTIONS
-            const canvas = document.getElementById('overlay')
-
-            // DETECT FACES
-            const detections = await faceapi.detectAllFaces(input).withFaceLandmarks().withFaceExpressions().withAgeAndGender()
-            console.log(detections)
-        }
-        catch (err) {
-            console.error(err)
-        }
-    }
-
     const stopMediaTracks = (stream) => {
         stream.getTracks().forEach(track => {
             track.stop();
@@ -117,12 +90,15 @@ function Home(props) {
     useEffect(() => {
         startVideo()
         async function loadModels() {
+            console.log('i am here 0')
             if (await helper.loadModels()) {
+                console.log('i am here 1')
                 const video = document.getElementById('fmcInputVideo')
                 video.addEventListener('play', () => {
-                    let detectionInterval = setInterval(async () => {
+                    console.log('i am here 2')
+                    let detectionInterval = setInterval(() => {
                         console.log('lets call onplay', modelsLoaded)
-                        await helper.onplay()
+                        helper.onplay()
                     }, 500)
                     setDetectionInterval(detectionInterval)
                 })
