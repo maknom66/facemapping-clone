@@ -187,7 +187,7 @@ export function checkFaceInImage(faceCoords, drawFromVideo = true) {
 }
 
 export async function onplay() {
-    // console.log('i am called')
+    console.log('i am called')
     clearTimeout(lastOnPlayCallTimeout);
     fmcManualCaptureFlag = false;
     lastOnPlayCallTimeout = setTimeout(() => {
@@ -254,9 +254,6 @@ export async function onplay() {
         resultsCounter = 0;
     }
     initalCaptureDelay += 500;
-    if (fmc_runStream) {
-        setTimeout(() => { console.log('i am called') }, 500);
-    }
 }
 
 export function getFaceLightProperties(landmarks, drawFromVideo = true) {
