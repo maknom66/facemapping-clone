@@ -188,7 +188,6 @@ export function checkFaceInImage(faceCoords, drawFromVideo = true) {
 }
 
 export async function onplay() {
-    console.log('i am called')
     clearTimeout(lastOnPlayCallTimeout);
     fmcManualCaptureFlag = false;
     lastOnPlayCallTimeout = setTimeout(() => {
@@ -211,7 +210,6 @@ export async function onplay() {
 
     try {
         faces = await faceapi.detectAllFaces(videoEl, options).withFaceLandmarks()
-        console.log(faces)
     } catch (errorDetectFace) {
         console.error("error in detect face: ", errorDetectFace);
     }
