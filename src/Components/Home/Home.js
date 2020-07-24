@@ -128,14 +128,16 @@ function Home(props) {
 
     // START DETECTING FACE ONCE DIMENSIONS ARE LOADED
     useEffect(() => {
-        const video = document.getElementById('fmcInputVideo')
-        video.addEventListener('play', () => {
-            let detectionInterval = setInterval(async () => {
-                console.log('lets call onplay', modelsLoaded)
-                modelsLoaded && await helper.onplay()
-            }, 500)
-            setDetectionInterval(detectionInterval)
-        })
+        if (modelsLoaded) {
+            const video = document.getElementById('fmcInputVideo')
+            video.addEventListener('play', () => {
+                let detectionInterval = setInterval(async () => {
+                    console.log('lets call onplay', modelsLoaded)
+                    modelsLoaded && await helper.onplay()
+                }, 500)
+                setDetectionInterval(detectionInterval)
+            })
+        }
     }, [modelsLoaded])
 
     return (
