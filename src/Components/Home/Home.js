@@ -92,7 +92,12 @@ function Home(props) {
         async function loadModels() {
             if (await helper.loadModels()) {
                 let detectionInterval = setInterval(() => {
-                    helper.onplay()
+                    if(helper.stopVideo){
+                        stopVideo()
+                    }
+                    else{
+                        helper.onplay()
+                    }
                 }, 500)
                 setDetectionInterval(detectionInterval)
             }

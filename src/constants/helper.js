@@ -13,6 +13,8 @@ const fmcImageErrors = {
 }
 
 // INITIALIZE
+export let stopVideo = false;
+let resultsCounter = 0;
 let fmcDehydrImgUrl = "";
 let fmcDarkCircImgUrl = "";
 let fmcRednessImgUrl = "";
@@ -33,7 +35,6 @@ let fmcManualCaptureFlag = false;
 let lastOnPlayCallTimeout;
 let lastCallTimeoutTimer = 5000;
 let lastEyePosition = { _x: 0, _y: 0 };
-let resultsCounter = 0;
 let onPlayDelayTimeout;
 let fmcIsOnboardingScreen = false;
 let mobileWidth = 768;
@@ -602,16 +603,16 @@ export function fmcCropToFace(canvasId = "fmc_camera_canvas") {
                         let detectionBox = landmarkData.detection._box
 
 
-                        let topY = Math.max(0, Math.round(detectionBox._y - 0.8 * detectionBox._height));
-                        let bottomY = Math.min(Math.round(detectionBox._y + 1.5 * detectionBox._height), canvas.height);
+                        let topY = Math.max(0, Math.round(detectionBox._y - 0.3 * detectionBox._height));
+                        let bottomY = Math.min(Math.round(detectionBox._y + detectionBox._height), canvas.height);
                         let faceBoxHeight = bottomY - topY;
 
 
                         //let leftX = Math.max(0,Math.round(detectionBox._x - 0.5*(Math.max(faceBoxHeight,detectionBox._width) - detectionBox._width)));
                         //let rightX = Math.min(canvas.width,Math.round(detectionBox._x + 0.5*(Math.max(faceBoxHeight,detectionBox._width) + detectionBox._width)));
 
-                        let leftX = Math.max(0, Math.round(detectionBox._x - 0.5 * detectionBox._width));
-                        let rightX = Math.min(canvas.width, Math.round(detectionBox._x + 1.5 * detectionBox._width));
+                        let leftX = Math.max(0, Math.round(detectionBox._x + 0.1 * detectionBox._width));
+                        let rightX = Math.min(canvas.width, Math.round(detectionBox._x + 0.95 * detectionBox._width));
 
                         let faceBoxData = {
                             x: leftX,
@@ -639,6 +640,7 @@ export function fmcCropToFace(canvasId = "fmc_camera_canvas") {
                             h: Math.round(faceBoxData.h)
                         }
 
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.putImageData(faceImgData, 0, 0);
                         setTimeout(() => {
                             resolve(canvasId);
@@ -898,11 +900,11 @@ export function fmcCalcConcerns(canvasId = "fmc_camera_canvas") {
                     })
 
 
-                    resolve({ concerns: { darkCircles: darkCircleScore, dehydration: "2" }, canvasId: canvasId });
+                    resolve({ concerns: { dark_circles: darkCircleScore, dehydration: "2" }, canvasId: canvasId });
                 })
                     .catch((e) => {
                         console.log("error in face detection on calc scores")
-                        resolve({ concerns: { darkCircles: "2", dehydration: "2" }, canvasId: canvasId });
+                        resolve({ concerns: { dark_circles: "2", dehydration: "2" }, canvasId: canvasId });
                     })
             } catch (err) {
                 reject(err);
@@ -1448,7 +1450,6 @@ export function fmcUpdateMaskOverlays() {
 
                 fmcMakeDarkCirclesMaskImageURL("fmc_dark_circles_canvas")
                     .then((imgUrl) => {
-                        console.log("DARK CIRCLES DONE")
                         if (window.facemap != undefined) {
                             window.facemap.concerns.forEach((concern, index) => {
                                 if (concern.name == "dark_circles") {
@@ -1658,7 +1659,7 @@ export function updateConcerns() {
             }
             htmlString += '<div id="fmc_concern_side_marker_' + concern.name + '" class="fmc-results-side-marker"></div>';
             htmlString += '<div id="fmc_results_category_content_' + concern.name + '" class="fmc-results-category-content">';
-            htmlString += '<div id="fmc_concern_title_' + concern.name + '" class="fmc-results-title">' + fmcConcernCopy[concern.name].title + '</div>';
+            htmlString += '<div id="fmc_concern_title_' + concern.name + '" class="fmc-results-title">' + concern.name + '</div>';
             htmlString += '<div id="fmc_concern_indicator_word_' + concern.name + '" class="fmc-results-indicator-word">' + scoreToSeverity(concern.score) + '</div>';
             htmlString += '<div id="fmc_concern_text_wrapper_' + concern.name + '" class="fmc-concern-text-wrapper fmc-text-collapsed">';
             htmlString += '<div id="fmc_concern_text_' + concern.name + '" class="fmc-results-text">' + fmcConcernCopy[concern.name].text + ' <a href="javascript:lessConcernText(\'' + concern.name + '\');" class="fmc-concern-less-button">' + fmcMoreLessButtonsText.less + '</a></div>';
@@ -1686,6 +1687,7 @@ export function updateConcerns() {
         if (document.getElementById("fmcBody").offsetWidth <= 768) {
             htmlString += '<div id="fmc_concern_slider_slide_element" draggable="true" ondragstart="dragRecommendationsStartEvent(event);" ontouchstart="dragRecommendationsStartEvent(event);"></div>';
         }
+        console.log('htmlString', htmlString)
         concernContainer.innerHTML = htmlString;
         sortedConcerns.forEach((concern, index) => {
             document.getElementById("fmc_results_category_content_" + concern.name).style.backgroundImage = 'url("https://facemapping.me/img/concerns/' + concern.name + '-icon.png")';
@@ -2344,7 +2346,7 @@ export function analyzeImage(canvasId = "fmc_camera_canvas") {
 
     fmcCropToFace(canvasId)
         .then((canvasIdAfterCrop) => {
-            console.log("face crop successful");
+            console.log("face crop successful", canvasIdAfterCrop);
             fmcLimitImageSize(canvasIdAfterCrop)
                 .then((canvasIdAfterLimit) => {
                     console.log("canvas Id before calc Concerns: ", canvasIdAfterLimit)
@@ -2362,16 +2364,28 @@ export function analyzeImage(canvasId = "fmc_camera_canvas") {
 
                         fmcCalcConcerns(canvasIdAfterLimit)
                             .then((res) => {
+                                stopVideo = true
                                 console.log("calculated concern scores: ", res.concerns);
                                 calcDehydrScore = Number(res.concerns.dehydration);
-                                calcDarkCircleScore = Number(res.concerns.darkCircles);
+                                calcDarkCircleScore = Number(res.concerns.dark_circles);
                                 let plainImgUrl = document.getElementById(res.canvasId).toDataURL("image/jpeg");
-                                window.facemap = { original_image: plainImgUrl };
+                                let concerns = []
+                                for (let key in res.concerns) {
+                                    let obj = {
+                                        name: key,
+                                        score: res.concerns[key]
+                                    }
+                                    concerns.push(obj)
+                                }
+                                window.facemap = { original_image: plainImgUrl, concerns, sortedConcerns: concerns };
                                 showScreen(5);
-                                fmcBuildResultsPage(window.facemap)
-                                    .then((buildResultsRes) => {
-                                        console.log("BUILD RESULTS RESPONSE: ", buildResultsRes);
-                                    })
+                                setTimeout(() => {
+                                    fmcBuildResultsPage(window.facemap)
+                                        .then((buildResultsRes) => {
+                                            console.log("BUILD RESULTS RESPONSE: ", buildResultsRes);
+                                        })
+                                }, 1000)
+
                                 // sendImageToBackend(plainImgUrl)
                                 //     .then((fmcRes) => {
 
@@ -2389,10 +2403,13 @@ export function analyzeImage(canvasId = "fmc_camera_canvas") {
                                 console.log("error in calculate concerns - ", err);
                                 let imgUrl = document.getElementById(canvasIdAfterLimit).toDataURL("image/jpeg");
                                 showScreen(5);
-                                fmcBuildResultsPage(window.facemap)
-                                    .then((buildResultsRes) => {
-                                        console.log("BUILD RESULTS RESPONSE: ", buildResultsRes);
-                                    })
+                                setTimeout(() => {
+                                    fmcBuildResultsPage(window.facemap)
+                                        .then((buildResultsRes) => {
+                                            console.log("BUILD RESULTS RESPONSE: ", buildResultsRes);
+                                        })
+                                }, 1000)
+
                                 // sendImageToBackend(imgUrl)
                                 //     .then((fmcRes) => {
                                 //         console.log("ANALYZE RESPONSE: ", fmcRes);
