@@ -282,12 +282,6 @@ export async function onplay() {
         console.error(err);
     }
 
-    document.getElementById("fmc_image_delayed_upload_button").style.display = "none";
-    clearTimeout(onPlayDelayTimeout);
-
-    document.getElementById("fmc_loading_spinner").style.display = "none";
-    document.getElementById("fmc_camera_page_camera_container").style.opacity = "1";
-
     const videoEl = document.getElementById('fmcInputVideo')
     let options = getFaceDetectorOptions()
     let faces;

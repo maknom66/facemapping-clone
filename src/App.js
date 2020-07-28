@@ -7,7 +7,7 @@ import {
 } from "react-router-dom";
 
 // SCREENS
-import Home from './Components/Home/Home'
+import Home from './components/Home/Home'
 
 export default props => {
     return (

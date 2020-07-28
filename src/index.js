@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 
+// CSS IMPORT
+import './assets/main.css'
+
 // APP JS IMPORT
 import App from './App';
 
