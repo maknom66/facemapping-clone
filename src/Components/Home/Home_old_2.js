@@ -534,7 +534,7 @@ function Home(props) {
     )
 }
 
-export default Home;
+export default Home1;
 
 const styles = StyleSheet.create({
     template: {
