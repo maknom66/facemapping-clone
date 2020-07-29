@@ -1,4 +1,5 @@
 import React, { Component, useEffect, useState, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { StyleSheet, css } from 'aphrodite';
 import * as faceapi from 'face-api.js';
 import * as helper from '../../constants/helper'
@@ -144,6 +145,7 @@ function Home(props) {
     const [mediaDevices, setMediaDevices] = useState([])
     const [concerns, setConcerns] = useState([])
     const [shouldStopVideo, setStopVideo] = useState(false)
+    const [roomName, setRoomName] = useState(null)
 
     // METHODS
     const stopMediaTracks = (stream) => {
@@ -188,6 +190,28 @@ function Home(props) {
         }
         catch (err) {
             console.error(err)
+        }
+    }
+
+    const startMeeting = ()=>{
+        if(roomName){
+            window.callFrame = window.DailyIframe.createFrame(
+                document.getElementById("meetingFrame"), {
+                showLeaveButton: true,
+                showFullscreenButton: true,
+                // iframeStyle: {
+                //     position: 'relative',
+                //     top: "4%",
+                //     bottom: "4%",
+                //     left: 0,
+                //     width: '99.6%',
+                //     height: '92%',
+                // }
+            });
+            
+            console.log("Joining " + roomName);
+            console.log("https://" + process.env.REACT_APP_DEV_DAILY_SUBDOMAIN + ".daily.co/" + roomName);
+            window.callFrame.join({ url: "https://" + process.env.REACT_APP_DEV_DAILY_SUBDOMAIN + ".daily.co/" + roomName })
         }
     }
 
@@ -1371,8 +1395,9 @@ function Home(props) {
 
     // EFFECTS
     useEffect(() => {
-        startVideo()
-        initialize()
+        // startMeeting()
+        // startVideo()
+        // initialize()
     }, [])
 
     useEffect(() => {
@@ -1428,13 +1453,20 @@ function Home(props) {
             <canvas id="fmc_dark_circles_canvas" />
             <div>
                 {concerns.length==0 ?
+                <>
                 <div className={`camera-container`}>
-                    <div className={`p-rel`}>
-                        <video id="inputVideo" autoplay="" playsinline="" muted ></video>
+                    <div className={`p-rel`} style={{width:'100%',height:'100%'}}>
+                        <div id="meetingFrame" style={{width:'100%',height:'100%'}}></div>
+                        {/* <video id="inputVideo" autoplay="" playsinline="" muted ></video>
                         <div id="inputVideoOvalMask" className={`inputVideoOvalMask`} style={{ height: '450px', backgroundSize: '750px' }} />
-                        <p id="detectionHint">sorry we could not detect your face</p>
+                        <p id="detectionHint">sorry we could not detect your face</p> */}
                     </div>
                 </div>
+                <div className="mt-2">
+                    <input type="email" placeholder="Enter Your Room Name" className="flex-1 appearance-none rounded shadow p-3 text-grey-dark focus:outline-none sm:w-full md:w-9/12" onChange={(e)=>setRoomName(e.target.value)}/>
+                    <button type="submit" className="appearance-none bg-indigo-700 text-white text-base font-semibold tracking-wide uppercase p-3 rounded shadow hover:bg-indigo-300 sm:w-full md:w-3/12" onClick={()=>startMeeting()}>Get started</button>
+                </div>
+                </>
                 :
                 <div class="w-screen flex mb-4">
                     {renderCards()}
