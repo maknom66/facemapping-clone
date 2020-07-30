@@ -1,8 +1,10 @@
-import React, { Component, useEffect, useState, useRef } from 'react';
+import React, { Component, useEffect, useState, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { StyleSheet, css } from 'aphrodite';
+import DailyIframe from "@daily-co/daily-js";
 import * as faceapi from 'face-api.js';
 import * as helper from '../../constants/helper'
+import * as constants from '../../constants/utils'
 import EXIF from 'exif-js'
 
 // STYLE
@@ -14,130 +16,9 @@ import './Home.css';
 import * as ApiCall from '../../constants/ApiCall'
 
 function Home(props) {
-    // CONSTANTS
-    const inputSize = 256
-    const scoreThreshold = 0.5
-    const detectionErrors = {
-        no_face: "Sorry, we could not detect your face. Please try again.",
-        multi_face: "Unfortunately, this isn't a group activity--you need to take the photo alone. Please try again.",
-        general: "Please pardon the interruption of your experience, but our application has encountered an error. Our developers are hard at work to prevent this happening again. Please try again."
-    }
-    const detectionDict = {
-        noFace: "sorry we could not detect your face",
-        tiltedLeft: "Head titled too much to the left!",
-        tiltedRight: "Head titled too much to the right!",
-        tiltedUpwards: "Your face is tilted upwards",
-        tiltedDawnwards: "Your face is tilted downwards",
-        turnedLeft: "Your face is turned too much to the left!",
-        turnedRight: "Your face is turned too much to the right!",
-        tooFar: "Your face is too far away",
-        tooClose: "Your face is too close",
-        tooFarRight: "Your face is too far to the right",
-        tooFarLeft: "Your face is too far to the left",
-        tooHigh: "Your face is too high in the image",
-        tooLow: "Your face is too low in the image",
-        unevenLight: "Face is not evenly lit",
-        perfect: "\u2705 Perfect - hold still please"
-    }
-
-    // INITIALIZE letIABLES
-    let resultsCounter = 0
-    let lastEyePosition = { _x: 0, _y: 0 };
-    let initalCaptureDelay = 0;
-    let fmcImageOrientation;
-    let curImgData;
-    let fmcDehydrImgUrl = "";
-    let fmcDarkCircImgUrl = "";
-    let fmcRednessImgUrl = "";
-    let fmcChatStatus = "offline";
-    let faceAIsawFace = false;
-    let calcDehydrScore = 2;
-    let calcDarkCircleScore = 2;
-    let ovalInterval;
-    let imageSent = false;
-    let fmc_runStream = true;
-    let camFaceDirection = true;
-    let mediaStream;
-    let fmc_showNavbar;
-    let fmcManualCaptureFlag = false;
-    let lastOnPlayCallTimeout;
-    let lastCallTimeoutTimer = 5000;
-    let onPlayDelayTimeout;
-    let fmcIsOnboardingScreen = false;
-    let mobileWidth = 768;
-    let counter = 0;
-    let fmcOS = "not found";
-    let fmc_results_available = false;
-    let fmcProductConcernsDone = false;
-    let fmcProductCarouselDone = false;
-    let pendingUpdateResultsCounter = 0;
-    let fmcMaxConcerns = 20;
-    let carouselSliderAllowsMoving = true;
-    let fmcRegimeLabelsOrder = ["precleanse", "cleanse", "exfoliate", "tone", "moisturize", "protect"];
-    let fmcImSz = {
-        w: 0,
-        h: 0
-    }
-    let fmcSeverityWords = {
-        critical: "critical",
-        moderate: "moderate"
-    }
-    let fmcMoreLessButtonsText = {
-        more: "more",
-        less: "less"
-    }
-    let fmcRegimeLabels = {
-        precleanse: "precldfsfeanse",
-        cleanse: "cleanse",
-        exfoliate: "exfoliate",
-        soothe: "soothe",
-        tone: "tone",
-        moisturize: "moisturize",
-        protect: "protect"
-    }
-    let fmcProductCards = {
-        shop_button: "shop"
-    }
-    let fmcConcernCopy = {
-        acne: {
-            title: "",
-            text: ""
-        },
-        dark_circles: {
-            title: "Dark Circles",
-            text: ""
-        },
-        dehydration: {
-            title: "Dehydration",
-            text: ""
-        },
-        oiliness: {
-            title: "",
-            text: ""
-        },
-        pores: {
-            title: "",
-            text: ""
-        },
-        redness: {
-            title: "",
-            text: ""
-        },
-        spots: {
-            title: "",
-            text: ""
-        },
-        uneven_skintone: {
-            title: "",
-            text: ""
-        },
-        wrinkles: {
-            title: "",
-            text: ""
-        }
-    }
-
     // STATE
+    const [appState, setAppState] = useState(constants.STATE_IDLE);
+    const [callObject, setCallObject] = useState(null)
     const [modelsLoaded, setModelsLoaded] = useState(false)
     const [currentStream, setCurrentStream] = useState(null)
     const [videoDims, setVideoDims] = useState(null)
@@ -146,6 +27,18 @@ function Home(props) {
     const [concerns, setConcerns] = useState([])
     const [shouldStopVideo, setStopVideo] = useState(false)
     const [roomName, setRoomName] = useState(null)
+
+    // CONSTANTS
+    const showCall = [constants.STATE_JOINING, constants.STATE_JOINED, constants.STATE_ERROR].includes(appState);
+    const enableCallButtons = [constants.STATE_JOINED, constants.STATE_ERROR].includes(appState);
+
+    // VARIABLE INITIALIZE
+    let resultsCounter = 0
+    let initalCaptureDelay = 0
+    let lastEyePosition = { _x: 0, _y: 0 }
+    let fmcImageOrientation;
+    let fmcImSz = {w: 0,h: 0}
+    let counter = 0;
 
     // METHODS
     const stopMediaTracks = (stream) => {
@@ -193,27 +86,81 @@ function Home(props) {
         }
     }
 
-    const startMeeting = ()=>{
-        if(roomName){
-            window.callFrame = window.DailyIframe.createFrame(
-                document.getElementById("meetingFrame"), {
-                showLeaveButton: true,
-                showFullscreenButton: true,
-                // iframeStyle: {
-                //     position: 'relative',
-                //     top: "4%",
-                //     bottom: "4%",
-                //     left: 0,
-                //     width: '99.6%',
-                //     height: '92%',
-                // }
-            });
-            
-            console.log("Joining " + roomName);
-            console.log("https://" + process.env.REACT_APP_DEV_DAILY_SUBDOMAIN + ".daily.co/" + roomName);
-            window.callFrame.join({ url: "https://" + process.env.REACT_APP_DEV_DAILY_SUBDOMAIN + ".daily.co/" + roomName })
+    const handleVideoCallState = () => {
+        if (!callObject) return;
+
+        const events = ["joined-meeting", "left-meeting", "error"];
+        function handleNewMeetingState(event) {
+            switch (callObject.meetingState()) {
+                case "joined-meeting":
+                    setAppState(constants.STATE_JOINED);
+                    break;
+                case "left-meeting":
+                    callObject.destroy().then(() => {
+                        setCallObject(null);
+                        setAppState(constants.STATE_IDLE);
+                    });
+                    break;
+                case "error":
+                    setAppState(constants.STATE_ERROR);
+                    break;
+                default:
+                    break;
+            }
         }
+
+        // Use initial state
+        handleNewMeetingState();
+
+        // Listen for changes in state
+        for (const event of events) {
+            callObject.on(event, handleNewMeetingState);
+        }
+
+        // Stop listening for changes in state
+        return function cleanup() {
+            for (const event of events) {
+                callObject.off(event, handleNewMeetingState);
+            }
+        };
     }
+
+    const startMeeting = () => {
+        // if(roomName){
+        //     window.callFrame = window.DailyIframe.createFrame(
+        //         document.getElementById("meetingFrame"), {
+        //         showLeaveButton: true,
+        //         showFullscreenButton: true,
+        //         // iframeStyle: {
+        //         //     position: 'relative',
+        //         //     top: "4%",
+        //         //     bottom: "4%",
+        //         //     left: 0,
+        //         //     width: '99.6%',
+        //         //     height: '92%',
+        //         // }
+        //     });
+
+        //     console.log("Joining " + roomName);
+        //     console.log("https://" + process.env.REACT_APP_DEV_DAILY_SUBDOMAIN + ".daily.co/" + roomName);
+        //     window.callFrame.join({ url: "https://" + process.env.REACT_APP_DEV_DAILY_SUBDOMAIN + ".daily.co/" + roomName })
+        // }
+    }
+
+    const startJoiningCall = useCallback(() => {
+        if (!callObject || !roomName) return;
+        let url = `https://${process.env.REACT_APP_DEV_DAILY_SUBDOMAIN}.daily.co/${roomName}`
+        const callObject = DailyIframe.createCallObject()
+        setCallObject(callObject)
+        setAppState(constants.STATE_JOINING);
+        callObject.join({ url });
+    }, []);
+
+    const startLeavingCall = useCallback(() => {
+        if (!callObject) return;
+        setAppState(constants.STATE_LEAVING);
+        callObject.leave();
+    }, [callObject]);
 
     const stopVideo = () => {
         try {
@@ -270,7 +217,7 @@ function Home(props) {
 
     // GET DETECTOR OPTIONS
     const getFaceDetectorOptions = () => {
-        return new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold })
+        return new faceapi.TinyFaceDetectorOptions({ inputSize: constants.inputSize, scoreThreshold: constants.scoreThreshold })
     }
 
     // GET FACE LIGHT PROPERTIES
@@ -376,60 +323,60 @@ function Home(props) {
         let allowHint = true;
 
         if (eyesTilt > 0.1) {
-            cameraHint = detectionDict.tiltedLeft;
+            cameraHint = constants.detectionDict.tiltedLeft;
             allowHint = false;
         } else if (eyesTilt < -0.1) {
-            cameraHint = detectionDict.tiltedRight;
+            cameraHint = constants.detectionDict.tiltedRight;
             allowHint = false;
         }
 
         if (noseTilt < 0.45 && allowHint) {
-            cameraHint = detectionDict.tiltedUpwards;
+            cameraHint = constants.detectionDict.tiltedUpwards;
             allowHint = false;
         } else if (noseTilt > 0.55 && allowHint) {
-            cameraHint = detectionDict.tiltedDownwards;
+            cameraHint = constants.detectionDict.tiltedDownwards;
             allowHint = false;
         }
 
         if (noseTurn > 0.1 && allowHint) {
-            cameraHint = detectionDict.turnedLeft;
+            cameraHint = constants.detectionDict.turnedLeft;
             allowHint = false;
         } else if (noseTurn < -0.1 && allowHint) {
-            cameraHint = detectionDict.turnedRight;
+            cameraHint = constants.detectionDict.turnedRight;
             allowHint = false;
         }
 
         if (widthRatio < widthRatioLimitLower && allowHint) {
-            cameraHint = detectionDict.tooFar;
+            cameraHint = constants.detectionDict.tooFar;
             allowHint = false;
         } else if (widthRatio > widthRatioLimitUpper && allowHint) {
-            cameraHint = detectionDict.tooClose;
+            cameraHint = constants.detectionDict.tooClose;
             allowHint = false;
         }
 
         if (relFaceBoxPos.x < xLimitLower && allowHint) {
-            cameraHint = detectionDict.tooFarRight;
+            cameraHint = constants.detectionDict.tooFarRight;
             allowHint = false;
         } else if (relFaceBoxPos.x > xLimitUpper && allowHint) {
-            cameraHint = detectionDict.tooFarLeft;
+            cameraHint = constants.detectionDict.tooFarLeft;
             allowHint = false;
         }
 
         if (relFaceBoxPos.y < yLimitLower && allowHint) {
-            cameraHint = detectionDict.tooHigh;
+            cameraHint = constants.detectionDict.tooHigh;
             allowHint = false;
         } else if (relFaceBoxPos.y > yLimitUpper && allowHint) {
-            cameraHint = detectionDict.tooLow;
+            cameraHint = constants.detectionDict.tooLow;
             allowHint = false;
         }
 
         if (lightParameters.relativeLightDiff > 0.4 && allowHint) {
-            cameraHint = detectionDict.unevenLight;
+            cameraHint = constants.detectionDict.unevenLight;
             allowHint = false;
         }
 
         if (allowHint) {
-            cameraHint = detectionDict.perfect;
+            cameraHint = constants.detectionDict.perfect;
         }
 
         return cameraHint
@@ -449,7 +396,7 @@ function Home(props) {
     // ALIGN IMAGE ORIENTATION
     const orientImage = async (base64imageInput) => {
         return new Promise((resolve, reject) => {
-            curImgData = base64imageInput;
+            constants.curImgData = base64imageInput;
             let exif = EXIF.readFromBinaryFile(base64ToArrayBuffer(base64imageInput));
 
             let canvas = document.getElementById("fmc_camera_canvas");
@@ -476,13 +423,13 @@ function Home(props) {
 
                 ctx.drawImage(tmpImage, 0, 0, imgWidth, imgHeight);
 
-                if (fmcManualCaptureFlag) {
+                if (constants.fmcManualCaptureFlag) {
                     reject(base64imageInput);
                 } else {
                     let faceAiWorksFlag = false;
                     setTimeout(() => {
                         if (!faceAiWorksFlag) {
-                            fmcManualCaptureFlag = false;
+                            constants.fmcManualCaptureFlag = false;
                             reject(base64imageInput);
                         }
                     }, 5000)
@@ -491,7 +438,7 @@ function Home(props) {
                         faceapi.detectAllFaces(canvas, options).withFaceLandmarks().then((landmarkDataArray) => {
                             faceAiWorksFlag = true;
                             if (landmarkDataArray.length > 0) {
-                                faceAIsawFace = true;
+                                constants.faceAIsawFace = true;
                                 resolve(base64imageInput);
                             } else {
                                 try {
@@ -522,18 +469,18 @@ function Home(props) {
                                     setTimeout(() => {
                                         faceapi.detectAllFaces(canvas, options).withFaceLandmarks().then((landmarkDataArray) => {
                                             if (landmarkDataArray.length > 0) {
-                                                faceAIsawFace = true;
+                                                constants.faceAIsawFace = true;
                                                 let imgData = canvas.toDataURL("image/jpeg");
                                                 try {
                                                     ctx.resetTransform();
                                                 } catch (err) {
                                                     ctx.rotate(0);
                                                 }
-                                                curImgData = imgData;
+                                                constants.curImgData = imgData;
                                                 resolve(imgData);
 
                                             } else {
-                                                curImgData = base64imageInput;
+                                                constants.curImgData = base64imageInput;
                                                 reject(base64imageInput);
                                             }
                                         });
@@ -541,13 +488,13 @@ function Home(props) {
                                     }, 10)
                                 } catch (loadErr) {
                                     console.log("error in orientating BB image", loadErr)
-                                    curImgData = base64imageInput;
+                                    constants.curImgData = base64imageInput;
                                     reject(base64imageInput);
                                 };
                             }
                         });
                     } catch (err) {
-                        curImgData = base64imageInput;
+                        constants.curImgData = base64imageInput;
                         reject(base64imageInput);
                     }
                 }
@@ -573,7 +520,7 @@ function Home(props) {
                 ctx.rotate(0);
             }
 
-            if (fmcManualCaptureFlag) {
+            if (constants.fmcManualCaptureFlag) {
                 resolve(canvasId);
             } else {
 
@@ -689,8 +636,8 @@ function Home(props) {
     // CALCULATE CONCERNS
     const fmcCalcConcerns = (canvasId = "fmc_camera_canvas") => {
         return new Promise((resolve, reject) => {
-            if (fmcManualCaptureFlag) {
-                reject({ success: false, message: "fmcManualCaptureFlag is true" });
+            if (constants.fmcManualCaptureFlag) {
+                reject({ success: false, message: "constants.fmcManualCaptureFlag is true" });
             } else {
                 try {
                     let options = getFaceDetectorOptions()
@@ -1221,7 +1168,7 @@ function Home(props) {
 
     // DEHYDRATION AND DARK CIRCLE MASK
     const fmcUpdateMaskOverlays = (originalImage, tempConcerns) => {
-        if (fmcDehydrImgUrl == "" || fmcDarkCircImgUrl == "") {
+        if (constants.fmcDehydrImgUrl == "" || constants.fmcDarkCircImgUrl == "") {
             let origImage = new Image();
             origImage.crossOrigin = "anonymous";
             origImage.onload = () => {
@@ -1361,7 +1308,7 @@ function Home(props) {
 
         if (faces.length > 0) {
             if (faces.length > 1) {
-                document.getElementById("detectionHint").innerHTML = detectionErrors.multi_face;
+                document.getElementById("detectionHint").innerHTML = constants.detectionErrors.multi_face;
             } else {
                 let result = faces[0];
                 let leftEyePoint = result.landmarks.getLeftEye()[0];
@@ -1369,7 +1316,7 @@ function Home(props) {
 
                 let cameraHint = checkFaceInImage(result)
                 let eyeMovement = Math.sqrt(Math.pow(leftEyePoint._x - lastEyePosition._x, 2) + Math.pow(leftEyePoint._y - lastEyePosition._y, 2)) / faceBox._width;
-                if (cameraHint == detectionDict.perfect) {
+                if (cameraHint == constants.detectionDict.perfect) {
                     if (initalCaptureDelay > 2000) {
                         resultsCounter++
                     }
@@ -1387,7 +1334,7 @@ function Home(props) {
             }
         }
         else {
-            document.getElementById("detectionHint").innerHTML = detectionDict.noFace;
+            document.getElementById("detectionHint").innerHTML = constants.detectionDict.noFace;
             resultsCounter = 0
         }
         initalCaptureDelay += 500;
@@ -1396,9 +1343,16 @@ function Home(props) {
     // EFFECTS
     useEffect(() => {
         // startMeeting()
+        startVideo()
+        initialize()
+    }, [])
+
+    useEffect(() => {
+        // handleVideoCallState()
+        // startMeeting()
         // startVideo()
         // initialize()
-    }, [])
+    }, [callObject])
 
     useEffect(() => {
         if (shouldStopVideo) {
@@ -1422,7 +1376,7 @@ function Home(props) {
                         <img className="w-full" src={item.image} alt="Profile picture" />
                         <div className="text-center absolute w-full" style={{bottom: '-30px'}}>
                         <div className="mb-10">
-                            <p className="text-white tracking-wide uppercase text-lg font-bold">{fmcConcernCopy[item.name].title}</p>
+                            <p className="text-white tracking-wide uppercase text-lg font-bold">{constants.fmcConcernCopy[item.name].title}</p>
                         </div>
                         <button className="cardButton p-4 rounded-full transition ease-in duration-200 focus:outline-none">
                             <svg viewBox="0 0 20 20" enableBackground="new 0 0 20 20" className="w-6 h-6">
@@ -1456,10 +1410,10 @@ function Home(props) {
                 <>
                 <div className={`camera-container`}>
                     <div className={`p-rel`} style={{width:'100%',height:'100%'}}>
-                        <div id="meetingFrame" style={{width:'100%',height:'100%'}}></div>
-                        {/* <video id="inputVideo" autoplay="" playsinline="" muted ></video>
+                        {/* <div id="meetingFrame" style={{width:'100%',height:'100%'}}></div> */}
+                        <video id="inputVideo" autoplay="" playsinline="" muted ></video>
                         <div id="inputVideoOvalMask" className={`inputVideoOvalMask`} style={{ height: '450px', backgroundSize: '750px' }} />
-                        <p id="detectionHint">sorry we could not detect your face</p> */}
+                        <p id="detectionHint">sorry we could not detect your face</p>
                     </div>
                 </div>
                 <div className="mt-2">
