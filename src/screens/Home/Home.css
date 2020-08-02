@@ -1,14 +1,14 @@
-.App{
+.App {
     background-color: #282c34;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* justify-content: center; */
     overflow: hidden;
 }
 
-#fmc_camera_canvas, #fmc_dehydration_canvas, #fmc_dark_circles_canvas, #fmc_camera_canvas_overlay {
+.rdcpup_canvas {
     opacity: 0;
     position: absolute;
     left: 0;
@@ -19,14 +19,16 @@
 }
 
 .camera-container {
-    margin: auto;
-    width: 600px;
-    height: 450px;
+    /* margin: auto; */
+    /* width: 600px;
+    height: 450px; */
+    width: 100vw;
+    height: 90vh;
     overflow: hidden;
-    box-shadow: 4px 4px 16px rgba(0,0,0,0.5);
+    box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.5);
 }
 
-video{
+video {
     max-width: 100%;
     transform: scaleX(-1);
 }
@@ -41,22 +43,22 @@ video{
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
-    opacity: 0.3;
+    opacity: 0;
 }
 
-#detectionHint{
+#detectionHint {
     position: absolute;
     top: 0;
     left: 0;
     text-align: center;
     width: 100%;
     padding: 10px;
-    background-color: rgba(0,0,0,0.2);
+    background-color: rgba(0, 0, 0, 0.2);
     color: white;
-    margin:0;
+    margin: 0;
 }
 
-#fmc_results_image_concerns_wrapper{
+#rdcpup_results_image_concerns_wrapper {
     left: 23% !important;
 }
 
@@ -67,4 +69,10 @@ video{
 }
 .cardButton:hover {
     box-shadow: 0 0 0 0 #ec008c, 0.2rem 0.2rem 60px #6617cb;
+}
+.videoCallContainer {
+    background-color: #4a4a4a;
+    position: absolute;
+    height: 100%;
+    width: 100%;
 }

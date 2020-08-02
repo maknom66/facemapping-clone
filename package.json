@@ -12,10 +12,13 @@
         "dotenv": "^8.2.0",
         "exif-js": "^2.3.0",
         "face-api.js": "^0.22.2",
+        "firebase": "^7.17.1",
+        "node-sass": "^4.14.1",
         "react": "^16.13.1",
         "react-dom": "^16.13.1",
         "react-router-dom": "^5.2.0",
         "react-scripts": "3.4.1",
+        "swiper": "^6.1.1",
         "uuid": "^8.3.0"
     },
     "scripts": {

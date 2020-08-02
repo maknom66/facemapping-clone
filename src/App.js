@@ -5,6 +5,7 @@ import {
     Switch,
     Route
 } from "react-router-dom";
+import Fire from "./Fire";
 
 // SCREENS
 import Home from './screens/Home/Home'
