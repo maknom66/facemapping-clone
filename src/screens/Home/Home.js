@@ -197,6 +197,7 @@ function Home(props) {
         document.getElementById("inputVideoOvalMask").style.backgroundSize =
             scaleFactor + "px";
         document.getElementById("inputVideoOvalMask").style.opacity = 0.3;
+        document.getElementById("detectionHint").style.opacity = 1;
     };
 
     // GET DETECTOR OPTIONS
@@ -2400,7 +2401,7 @@ function Home(props) {
                         className={`p-rel`}
                         style={{ width: "100%", height: "100%" }}
                     >
-                        <div className="videoCallContainer flex content-end flex-wrap">
+                        <div className="videoCallContainer child-vert-end flex-wrap">
                             <CallObjectContext.Provider value={callObject}>
                                 {showCall && (
                                     <Call
@@ -2426,9 +2427,7 @@ function Home(props) {
                     </div>
                 </div>
                 <div
-                    className={`w-full flex content-center flex-wrap ${css(
-                        styles.h10vh
-                    )}`}
+                    className={`w-full child-vert-center  ${css(styles.h10vh)}`}
                     align="center"
                 >
                     <div className={`w-full`}>
