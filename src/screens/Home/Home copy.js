@@ -565,11 +565,7 @@ function Home(props) {
     };
 
     // CROP IMAGE
-    const rdcpupCropToFace = (
-        canvasId = "rdcpup_camera_canvas",
-        detectionBox
-    ) => {
-        console.log("Inside rdcpupCropToFace");
+    const rdcpupCropToFace = (canvasId = "rdcpup_camera_canvas") => {
         return new Promise((resolve, reject) => {
             let canvas = document.getElementById(canvasId);
             let ctx = canvas.getContext("2d");
@@ -579,47 +575,108 @@ function Home(props) {
                 ctx.rotate(0);
             }
 
-            let topY = Math.max(
-                0,
-                Math.round(detectionBox._y - detectionBox._height / 2.5)
-            );
-            let bottomY = Math.min(
-                Math.round(detectionBox._y + detectionBox._height),
-                canvas.height
-            );
-            let leftX = Math.max(0, Math.round(detectionBox._x + 20));
-            let rightX = Math.min(
-                canvas.width,
-                Math.round(detectionBox._x + detectionBox._width)
-            );
+            if (constants.rdcpupManualCaptureFlag) {
+                resolve(canvasId);
+            } else {
+                let fallbackFlag = true;
+                setTimeout(() => {
+                    if (fallbackFlag) {
+                        resolve(canvasId);
+                    }
+                }, 3000);
 
-            let faceBoxData = {
-                x: leftX,
-                y: topY,
-                w: rightX - leftX,
-                h: bottomY - topY,
-            };
+                let options = getFaceDetectorOptions();
+                faceapi
+                    .detectAllFaces(canvas, options)
+                    .withFaceLandmarks()
+                    .then((landmarkDataArray) => {
+                        fallbackFlag = false;
+                        if (landmarkDataArray.length == 1) {
+                            landmarkDataArray.forEach((landmarkData, index) => {
+                                let overlay = document.getElementById(
+                                    "rdcpup_camera_canvas_overlay"
+                                );
+                                overlay.style.opacity = 1;
+                                overlay.width = canvas.width;
+                                overlay.height = canvas.height;
 
-            let faceImgData = ctx.getImageData(
-                faceBoxData.x,
-                faceBoxData.y,
-                faceBoxData.w,
-                faceBoxData.h
-            );
+                                let detectionBox = landmarkData.detection._box;
 
-            canvas.width = faceBoxData.w;
-            canvas.height = faceBoxData.h;
+                                let topY = Math.max(
+                                    0,
+                                    Math.round(
+                                        detectionBox._y -
+                                            0.3 * detectionBox._height
+                                    )
+                                );
+                                let bottomY = Math.min(
+                                    Math.round(
+                                        detectionBox._y + detectionBox._height
+                                    ),
+                                    canvas.height
+                                );
+                                let faceBoxHeight = bottomY - topY;
 
-            rdcpupImSz = {
-                w: Math.round(faceBoxData.w),
-                h: Math.round(faceBoxData.h),
-            };
+                                let leftX = Math.max(
+                                    0,
+                                    Math.round(
+                                        detectionBox._x +
+                                            0.1 * detectionBox._width
+                                    )
+                                );
+                                let rightX = Math.min(
+                                    canvas.width,
+                                    Math.round(
+                                        detectionBox._x +
+                                            0.95 * detectionBox._width
+                                    )
+                                );
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.putImageData(faceImgData, 0, 0);
-            setTimeout(() => {
-                resolve(canvas.toDataURL("image/jpeg"));
-            }, 10);
+                                let faceBoxData = {
+                                    x: leftX,
+                                    y: topY,
+                                    w: rightX - leftX,
+                                    h: bottomY - topY,
+                                };
+
+                                let faceImgData = ctx.getImageData(
+                                    faceBoxData.x,
+                                    faceBoxData.y,
+                                    faceBoxData.w,
+                                    faceBoxData.h
+                                );
+
+                                canvas.width = faceBoxData.w;
+                                canvas.height = faceBoxData.h;
+
+                                rdcpupImSz = {
+                                    w: Math.round(faceBoxData.w),
+                                    h: Math.round(faceBoxData.h),
+                                };
+
+                                ctx.clearRect(
+                                    0,
+                                    0,
+                                    canvas.width,
+                                    canvas.height
+                                );
+                                ctx.putImageData(faceImgData, 0, 0);
+                                setTimeout(() => {
+                                    resolve(canvasId);
+                                }, 10);
+                            });
+                        } else {
+                            resolve(canvasId);
+                        }
+                    })
+                    .catch((e) => {
+                        console.log(
+                            "could not crop to face, sending full image",
+                            e
+                        );
+                        resolve(canvasId);
+                    });
+            }
         });
     };
 
@@ -1170,7 +1227,6 @@ function Home(props) {
                     .then((landmarkDataArray) => {
                         if (landmarkDataArray.length > 0) {
                             landmarkDataArray.forEach((landmarkData, index) => {
-                                let detectionBox = landmarkData.detection._box;
                                 let leftEye = [];
                                 let rightEye = [];
                                 let leftEyeBrow = [];
@@ -1830,23 +1886,7 @@ function Home(props) {
                                             );
                                             dehydrationImgData = null;
                                             newImgData = null;
-
-                                            rdcpupCropToFace(
-                                                "rdcpup_dehydration_canvas",
-                                                detectionBox
-                                            )
-                                                .then((croppedImageMaskUrl) => {
-                                                    resolve(
-                                                        croppedImageMaskUrl
-                                                    );
-                                                })
-                                                .catch((err) => {
-                                                    console.log(
-                                                        "unable to crop:- ",
-                                                        err
-                                                    );
-                                                    resolve(imageMaskUrl);
-                                                });
+                                            resolve(imageMaskUrl);
                                         }
                                     });
                                 }
@@ -1924,7 +1964,6 @@ function Home(props) {
                     .then((landmarkDataArray) => {
                         if (landmarkDataArray.length > 0) {
                             landmarkDataArray.forEach((landmarkData, index) => {
-                                let detectionBox = landmarkData.detection._box;
                                 let leftEye = [];
                                 let rightEye = [];
                                 if (
@@ -2037,18 +2076,7 @@ function Home(props) {
                                 );
 
                                 let imgUrl = canvas.toDataURL("image/jpeg");
-
-                                rdcpupCropToFace(
-                                    "rdcpup_dark_circles_canvas",
-                                    detectionBox
-                                )
-                                    .then((croppedImageMaskUrl) => {
-                                        resolve(croppedImageMaskUrl);
-                                    })
-                                    .catch((err) => {
-                                        console.log("unable to crop:- ", err);
-                                        resolve(imgUrl);
-                                    });
+                                resolve(imgUrl);
                             });
                         } else {
                             resultsCounter = 0;
@@ -2157,60 +2185,65 @@ function Home(props) {
     // ANALYZE IMAGE
     const analyzeImage = (canvasId = "rdcpup_camera_canvas") => {
         console.log("Inside analyzeimage");
-        // rdcpupCropToFace(canvasId)
-        //     .then((canvasIdAfterCrop) => {
-        rdcpupLimitImageSize(canvasId)
-            .then((canvasIdAfterLimit) => {
-                let originalImage = document
-                    .getElementById(canvasIdAfterLimit)
-                    .toDataURL("image/jpeg");
-                let canvas_score = document.getElementById(canvasIdAfterLimit);
-                let ctx_score = canvas_score.getContext("2d");
-                let concernImage = new Image();
-                concernImage.onload = () => {
-                    ctx_score.drawImage(
-                        concernImage,
-                        0,
-                        0,
-                        canvas_score.width,
-                        canvas_score.height
-                    );
-                    rdcpupCalcConcerns(canvasIdAfterLimit)
-                        .then((res) => {
-                            setStopVideo(true);
-                            let tempConcerns = [];
-                            for (let key in res.concerns) {
-                                let obj = {
-                                    name: key,
-                                    score: Number(res.concerns[key]),
-                                    image: null,
-                                };
-                                tempConcerns.push(obj);
-                            }
-                            rdcpupUpdateMaskOverlays(
-                                originalImage,
-                                tempConcerns
+        rdcpupCropToFace(canvasId)
+            .then((canvasIdAfterCrop) => {
+                rdcpupLimitImageSize(canvasIdAfterCrop)
+                    .then((canvasIdAfterLimit) => {
+                        let originalImage = document
+                            .getElementById(canvasIdAfterLimit)
+                            .toDataURL("image/jpeg");
+                        let canvas_score = document.getElementById(
+                            canvasIdAfterLimit
+                        );
+                        let ctx_score = canvas_score.getContext("2d");
+                        let concernImage = new Image();
+                        concernImage.onload = () => {
+                            ctx_score.drawImage(
+                                concernImage,
+                                0,
+                                0,
+                                canvas_score.width,
+                                canvas_score.height
                             );
-                        })
-                        .catch((err) => {
-                            console.log("error in calculate concerns - ", err);
-                        });
-                };
-                concernImage.src = originalImage;
+                            rdcpupCalcConcerns(canvasIdAfterLimit)
+                                .then((res) => {
+                                    setStopVideo(true);
+                                    let tempConcerns = [];
+                                    for (let key in res.concerns) {
+                                        let obj = {
+                                            name: key,
+                                            score: Number(res.concerns[key]),
+                                            image: null,
+                                        };
+                                        tempConcerns.push(obj);
+                                    }
+                                    rdcpupUpdateMaskOverlays(
+                                        originalImage,
+                                        tempConcerns
+                                    );
+                                })
+                                .catch((err) => {
+                                    console.log(
+                                        "error in calculate concerns - ",
+                                        err
+                                    );
+                                });
+                        };
+                        concernImage.src = originalImage;
+                    })
+                    .catch((err) => {
+                        console.log("error in limiting image size - ", err);
+                        let imgUrl = document
+                            .getElementById(canvasIdAfterCrop)
+                            .toDataURL("image/jpeg");
+                    });
             })
             .catch((err) => {
-                console.log("error in limiting image size - ", err);
-                // let imgUrl = document
-                //     .getElementById(canvasIdAfterCrop)
-                //     .toDataURL("image/jpeg");
+                console.log("error in croping face - ", err);
+                let imgUrl = document
+                    .getElementById(canvasId)
+                    .toDataURL("image/jpeg");
             });
-        // })
-        // .catch((err) => {
-        //     console.log("error in croping face - ", err);
-        //     let imgUrl = document
-        //         .getElementById(canvasId)
-        //         .toDataURL("image/jpeg");
-        // });
     };
 
     // START WITH IMAGE PROCESSING
